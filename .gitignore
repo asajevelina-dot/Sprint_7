@@ -1,0 +1,6 @@
+*.pyc
+.pytest_cache/
+allure_results/
+allure-report/
+.vscode/
+.idea/
