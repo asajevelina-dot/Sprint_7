@@ -14,35 +14,7 @@ def generate_random_string(length):
     return ''.join(random.choice(letters) for i in range(length))
 
 
-@allure.step("Регистрация нового курьера")
-def register_new_courier_and_return_login_password():
-    """Регистрирует нового курьера, возвращает [login, password, first_name]"""
-    login = generate_random_string(10)
-    password = generate_random_string(10)
-    first_name = "ТестовыйКурьер"
-
-    payload = {
-        "login": login,
-        "password": password,
-        "firstName": first_name
-    }
-
-    response = ApiClient.post(Urls.CREATE_COURIER, data=payload)
-
-    if response.status_code == 201:
-        return [login, password, first_name]
-    return []
-
-
-@allure.step("Удаление курьера по ID")
-def delete_courier(courier_id):
-    """Удаляет курьера по ID"""
-    if courier_id:
-        return ApiClient.delete(Urls.delete_courier(courier_id))
-    return None
-
-
-@allure.step("Получение ID курьера")
+@allure.step("Получение ID курьера по логину и паролю")
 def get_courier_id(login, password):
     """Получает ID курьера по логину и паролю"""
     payload = {

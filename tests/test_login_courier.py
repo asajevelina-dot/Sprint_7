@@ -1,8 +1,10 @@
 """Тесты авторизации курьера"""
 
 import allure
+import pytest
 from api_client import ApiClient
 from urls import Urls
+from data import INCOMPLETE_LOGIN_DATA
 
 
 @allure.feature('Курьер')
@@ -11,55 +13,48 @@ class TestLoginCourier:
 
     @allure.title('Авторизация курьера - успех')
     def test_login_courier_success(self, create_courier_and_delete):
-        login, password, _ = create_courier_and_delete
+        courier_data = create_courier_and_delete
+        if courier_data is None:
+            pytest.skip("Не удалось создать курьера")
 
-        payload = {"login": login, "password": password}
+        payload = {"login": courier_data['login'], "password": courier_data['password']}
         response = ApiClient.post(Urls.LOGIN_COURIER, data=payload)
 
         assert response.status_code == 200
         assert 'id' in response.json()
         assert response.json()['id'] > 0
 
-    @allure.title('Авторизация без пароля - ошибка')
-    def test_login_without_password_fails(self, create_courier_and_delete):
-        login, _, _ = create_courier_and_delete
-
-        payload = {"login": login}
+    @allure.title('Авторизация без обязательных полей - ошибка')
+    @pytest.mark.parametrize("payload, expected_message", INCOMPLETE_LOGIN_DATA)
+    def test_login_missing_fields_fails(self, payload, expected_message):
         response = ApiClient.post(Urls.LOGIN_COURIER, data=payload)
 
-        assert response.status_code != 200
-
-    @allure.title('Авторизация без логина - ошибка')
-    def test_login_without_login_fails(self, create_courier_and_delete):
-        _, password, _ = create_courier_and_delete
-
-        payload = {"password": password}
-        response = ApiClient.post(Urls.LOGIN_COURIER, data=payload)
-
-        assert response.status_code != 200
-
-    @allure.title('Авторизация без полей - ошибка')
-    def test_login_without_fields_fails(self):
-        response = ApiClient.post(Urls.LOGIN_COURIER, data={})
-        assert response.status_code != 200
+        assert response.status_code == 400
+        assert response.json().get('message') == expected_message
 
     @allure.title('Авторизация с неверным логином - ошибка')
     def test_login_wrong_login_fails(self, create_courier_and_delete):
-        _, password, _ = create_courier_and_delete
+        courier_data = create_courier_and_delete
+        if courier_data is None:
+            pytest.skip("Не удалось создать курьера")
 
-        payload = {"login": "wrong_login_12345", "password": password}
+        payload = {"login": "wrong_login_12345", "password": courier_data['password']}
         response = ApiClient.post(Urls.LOGIN_COURIER, data=payload)
 
         assert response.status_code == 404
+        assert response.json().get('message') == 'Учетная запись не найдена'
 
     @allure.title('Авторизация с неверным паролем - ошибка')
     def test_login_wrong_password_fails(self, create_courier_and_delete):
-        login, _, _ = create_courier_and_delete
+        courier_data = create_courier_and_delete
+        if courier_data is None:
+            pytest.skip("Не удалось создать курьера")
 
-        payload = {"login": login, "password": "wrong_password_123"}
+        payload = {"login": courier_data['login'], "password": "wrong_password_123"}
         response = ApiClient.post(Urls.LOGIN_COURIER, data=payload)
 
         assert response.status_code == 404
+        assert response.json().get('message') == 'Учетная запись не найдена'
 
     @allure.title('Авторизация несуществующего пользователя - ошибка')
     def test_login_nonexistent_user_fails(self):
@@ -67,3 +62,4 @@ class TestLoginCourier:
         response = ApiClient.post(Urls.LOGIN_COURIER, data=payload)
 
         assert response.status_code == 404
+        assert response.json().get('message') == 'Учетная запись не найдена'
