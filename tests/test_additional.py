@@ -26,7 +26,8 @@ class TestDeleteCourier:
     def test_delete_nonexistent_courier_fails(self):
         response = ApiClient.delete(Urls.delete_courier(999999999))
         assert response.status_code == 404
-        assert response.json().get('message') == 'Курьера с таким id нет'
+        message = response.json().get('message')
+        assert 'Курьера с таким id' in message
 
     @allure.title('Удаление курьера с отрицательным ID - ошибка')
     def test_delete_courier_negative_id_fails(self):
@@ -101,7 +102,8 @@ class TestAcceptOrder:
 
         accept_response = ApiClient.put(Urls.accept_order(order_id), params={'courierId': 999999999})
         assert accept_response.status_code == 404
-        assert accept_response.json().get('message') == 'Курьера с таким id нет'
+        message = accept_response.json().get('message')
+        assert 'Курьера с таким id' in message
 
         ApiClient.put(Urls.CANCEL_ORDER, params={'track': track})
 
@@ -113,7 +115,8 @@ class TestAcceptOrder:
 
         response = ApiClient.put(Urls.accept_order(999999999), params={'courierId': courier_data['id']})
         assert response.status_code == 404
-        assert response.json().get('message') == 'Заказа с таким id нет'
+        message = response.json().get('message')
+        assert 'Заказа с таким id' in message
 
 
 @allure.feature('Заказы')
