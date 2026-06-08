@@ -20,10 +20,8 @@ class Urls:
 
     @staticmethod
     def delete_courier(courier_id):
-        """Возвращает URL для удаления курьера по ID"""
         return Urls.DELETE_COURIER_TEMPLATE.format(courier_id=courier_id)
 
     @staticmethod
     def accept_order(order_id):
-        """Возвращает URL для принятия заказа по ID"""
         return Urls.ACCEPT_ORDER_TEMPLATE.format(order_id=order_id)

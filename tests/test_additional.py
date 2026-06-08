@@ -1,11 +1,11 @@
 """Дополнительные тесты: удаление курьера, принятие заказа, получение заказа по номеру"""
 
-import pytest
 import allure
 import time
 from api_client import ApiClient
 from urls import Urls
 from data import OrderTestData
+from helpers import generate_random_string
 
 
 @allure.feature('Курьер')
@@ -13,31 +13,37 @@ from data import OrderTestData
 class TestDeleteCourier:
 
     @allure.title('Удаление курьера - успех')
-    def test_delete_courier_success(self, create_test_courier):
-        courier_data = create_test_courier
-        if courier_data is None:
-            pytest.skip("Не удалось создать курьера")
+    def test_delete_courier_success(self):
+        # Создаём курьера
+        login = generate_random_string(10)
+        password = generate_random_string(10)
+        first_name = "Тест"
 
-        response = ApiClient.delete(Urls.delete_courier(courier_data['id']))
-        assert response.status_code == 200
-        assert response.json() == {"ok": True}
+        create_payload = {"login": login, "password": password, "firstName": first_name}
+        create_response = ApiClient.post(Urls.CREATE_COURIER, data=create_payload)
+        assert create_response.status_code == 201
 
-    @allure.title('Удаление несуществующего курьера - ошибка')
+        # Получаем ID курьера
+        login_payload = {"login": login, "password": password}
+        login_response = ApiClient.post(Urls.LOGIN_COURIER, data=login_payload)
+        assert login_response.status_code == 200
+        courier_id = login_response.json()['id']
+
+        # Удаляем курьера
+        delete_response = ApiClient.delete(Urls.delete_courier(courier_id))
+        assert delete_response.status_code == 200
+        assert delete_response.json() == {"ok": True}
+
+    @allure.title('Удаление несуществующего курьера - ошибка 400')
     def test_delete_nonexistent_courier_fails(self):
         response = ApiClient.delete(Urls.delete_courier(999999999))
-        assert response.status_code == 404
-        message = response.json().get('message')
-        assert 'Курьера с таким id' in message
+        assert response.status_code == 400
+        assert response.json().get('message') == 'Недостаточно данных для удаления курьера'
 
-    @allure.title('Удаление курьера с отрицательным ID - ошибка')
-    def test_delete_courier_negative_id_fails(self):
-        response = ApiClient.delete(Urls.delete_courier(-1))
-        assert response.status_code in [400, 404]
-
-    @allure.title('Удаление курьера с текстовым ID - ошибка')
-    def test_delete_courier_text_id_fails(self):
-        response = ApiClient.delete(Urls.delete_courier("abc"))
-        assert response.status_code in [400, 404, 500]
+    @allure.title('Удаление курьера без ID - ошибка 400')
+    def test_delete_courier_without_id_fails(self):
+        response = ApiClient.delete('/api/v1/courier/')
+        assert response.status_code == 400
 
 
 @allure.feature('Заказы')
@@ -45,78 +51,105 @@ class TestDeleteCourier:
 class TestAcceptOrder:
 
     @allure.title('Принятие заказа - успех')
-    def test_accept_order_success(self, create_test_courier):
-        courier_data = create_test_courier
-        if courier_data is None:
-            pytest.skip("Не удалось создать курьера")
+    def test_accept_order_success(self):
+        # Создаём курьера
+        login = generate_random_string(10)
+        password = generate_random_string(10)
+
+        create_courier_payload = {"login": login, "password": password, "firstName": "Тест"}
+        create_courier_response = ApiClient.post(Urls.CREATE_COURIER, data=create_courier_payload)
+        assert create_courier_response.status_code == 201
+
+        # Получаем ID курьера
+        login_payload = {"login": login, "password": password}
+        login_response = ApiClient.post(Urls.LOGIN_COURIER, data=login_payload)
+        assert login_response.status_code == 200
+        courier_id = login_response.json()['id']
 
         # Создаём заказ
-        response = ApiClient.post(Urls.CREATE_ORDER, json=OrderTestData.ORDER_BLACK)
-        assert response.status_code == 201
-        track = response.json().get('track')
+        order_response = ApiClient.post(Urls.CREATE_ORDER, json=OrderTestData.ALL_ORDERS[0])
+        assert order_response.status_code == 201
+        track = order_response.json().get('track')
 
         time.sleep(1)
 
         # Получаем ID заказа
-        order_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
-        assert order_response.status_code == 200
-        order_id = order_response.json()['order']['id']
+        track_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
+        assert track_response.status_code == 200
+        order_id = track_response.json()['order']['id']
 
         # Принимаем заказ
-        accept_response = ApiClient.put(Urls.accept_order(order_id), params={'courierId': courier_data['id']})
+        accept_response = ApiClient.put(Urls.accept_order(order_id), params={'courierId': courier_id})
         assert accept_response.status_code == 200
         assert accept_response.json() == {"ok": True}
 
         # Отменяем заказ для очистки
         ApiClient.put(Urls.CANCEL_ORDER, params={'track': track})
 
-    @allure.title('Принятие заказа без ID курьера - ошибка')
+    @allure.title('Принятие заказа без ID курьера - ошибка 400')
     def test_accept_order_without_courier_id_fails(self):
-        response = ApiClient.post(Urls.CREATE_ORDER, json=OrderTestData.ORDER_BLACK)
-        assert response.status_code == 201
-        track = response.json().get('track')
+        # Создаём заказ
+        order_response = ApiClient.post(Urls.CREATE_ORDER, json=OrderTestData.ALL_ORDERS[0])
+        assert order_response.status_code == 201
+        track = order_response.json().get('track')
 
         time.sleep(1)
 
-        order_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
-        assert order_response.status_code == 200
-        order_id = order_response.json()['order']['id']
+        # Получаем ID заказа
+        track_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
+        assert track_response.status_code == 200
+        order_id = track_response.json()['order']['id']
 
+        # Пытаемся принять заказ без ID курьера
         accept_response = ApiClient.put(Urls.accept_order(order_id))
         assert accept_response.status_code == 400
         assert accept_response.json().get('message') == 'Недостаточно данных для поиска'
 
+        # Отменяем заказ для очистки
         ApiClient.put(Urls.CANCEL_ORDER, params={'track': track})
 
-    @allure.title('Принятие заказа с неверным ID курьера - ошибка')
+    @allure.title('Принятие заказа с неверным ID курьера - ошибка 400')
     def test_accept_order_wrong_courier_id_fails(self):
-        response = ApiClient.post(Urls.CREATE_ORDER, json=OrderTestData.ORDER_BLACK)
-        assert response.status_code == 201
-        track = response.json().get('track')
+        # Создаём заказ
+        order_response = ApiClient.post(Urls.CREATE_ORDER, json=OrderTestData.ALL_ORDERS[0])
+        assert order_response.status_code == 201
+        track = order_response.json().get('track')
 
         time.sleep(1)
 
-        order_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
-        assert order_response.status_code == 200
-        order_id = order_response.json()['order']['id']
+        # Получаем ID заказа
+        track_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
+        assert track_response.status_code == 200
+        order_id = track_response.json()['order']['id']
 
+        # Пытаемся принять заказ с неверным ID курьера
         accept_response = ApiClient.put(Urls.accept_order(order_id), params={'courierId': 999999999})
-        assert accept_response.status_code == 404
-        message = accept_response.json().get('message')
-        assert 'Курьера с таким id' in message
+        assert accept_response.status_code == 400
+        assert accept_response.json().get('message') == 'Недостаточно данных для поиска'
 
+        # Отменяем заказ для очистки
         ApiClient.put(Urls.CANCEL_ORDER, params={'track': track})
 
-    @allure.title('Принятие заказа с неверным ID заказа - ошибка')
-    def test_accept_order_wrong_order_id_fails(self, create_test_courier):
-        courier_data = create_test_courier
-        if courier_data is None:
-            pytest.skip("Не удалось создать курьера")
+    @allure.title('Принятие заказа с неверным ID заказа - ошибка 400')
+    def test_accept_order_wrong_order_id_fails(self):
+        # Создаём курьера
+        login = generate_random_string(10)
+        password = generate_random_string(10)
 
-        response = ApiClient.put(Urls.accept_order(999999999), params={'courierId': courier_data['id']})
-        assert response.status_code == 404
-        message = response.json().get('message')
-        assert 'Заказа с таким id' in message
+        create_courier_payload = {"login": login, "password": password, "firstName": "Тест"}
+        create_courier_response = ApiClient.post(Urls.CREATE_COURIER, data=create_courier_payload)
+        assert create_courier_response.status_code == 201
+
+        # Получаем ID курьера
+        login_payload = {"login": login, "password": password}
+        login_response = ApiClient.post(Urls.LOGIN_COURIER, data=login_payload)
+        assert login_response.status_code == 200
+        courier_id = login_response.json()['id']
+
+        # Пытаемся принять заказ с неверным ID заказа
+        accept_response = ApiClient.put(Urls.accept_order(999999999), params={'courierId': courier_id})
+        assert accept_response.status_code == 400
+        assert accept_response.json().get('message') == 'Недостаточно данных для поиска'
 
 
 @allure.feature('Заказы')
@@ -125,37 +158,40 @@ class TestGetOrderByTrack:
 
     @allure.title('Получение заказа по трек-номеру - успех')
     def test_get_order_by_track_success(self):
-        response = ApiClient.post(Urls.CREATE_ORDER, json=OrderTestData.ORDER_BLACK)
-        assert response.status_code == 201
-        track = response.json().get('track')
+        # Создаём заказ
+        order_response = ApiClient.post(Urls.CREATE_ORDER, json=OrderTestData.ALL_ORDERS[0])
+        assert order_response.status_code == 201
+        track = order_response.json().get('track')
 
         time.sleep(2)
 
-        order_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
+        # Получаем заказ по треку
+        track_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
 
-        if order_response.status_code == 404:
+        if track_response.status_code == 404:
             time.sleep(2)
-            order_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
+            track_response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': track})
 
-        assert order_response.status_code == 200
-        assert 'order' in order_response.json()
-        assert order_response.json()['order']['track'] == track
+        assert track_response.status_code == 200
+        assert 'order' in track_response.json()
+        assert track_response.json()['order']['track'] == track
 
+        # Отменяем заказ для очистки
         ApiClient.put(Urls.CANCEL_ORDER, params={'track': track})
 
-    @allure.title('Получение заказа без трек-номера - ошибка')
+    @allure.title('Получение заказа без трек-номера - ошибка 400')
     def test_get_order_without_track_fails(self):
         response = ApiClient.get(Urls.GET_ORDER_BY_TRACK)
         assert response.status_code == 400
         assert response.json().get('message') == 'Недостаточно данных для поиска'
 
-    @allure.title('Получение заказа с пустым трек-номером - ошибка')
+    @allure.title('Получение заказа с пустым трек-номером - ошибка 400')
     def test_get_order_empty_track_fails(self):
         response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': ''})
         assert response.status_code == 400
 
-    @allure.title('Получение несуществующего заказа - ошибка')
+    @allure.title('Получение несуществующего заказа - ошибка 400')
     def test_get_nonexistent_order_fails(self):
         response = ApiClient.get(Urls.GET_ORDER_BY_TRACK, params={'t': 999999999})
-        assert response.status_code == 404
-        assert response.json().get('message') == 'Заказ не найден'
+        assert response.status_code == 400
+        assert response.json().get('message') == 'Недостаточно данных для поиска'

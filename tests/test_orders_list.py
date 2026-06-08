@@ -24,7 +24,7 @@ class TestOrdersList:
         assert response.status_code == 200
         assert len(response.json()['orders']) <= 5
 
-    @allure.title('Получение списка заказов - проверка структуры')
+    @allure.title('Получение списка заказов - проверка структуры заказа')
     def test_get_orders_list_structure(self):
         response = ApiClient.get(Urls.GET_ORDERS_LIST, params={'limit': 1})
 
