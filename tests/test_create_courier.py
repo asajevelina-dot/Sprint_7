@@ -12,7 +12,7 @@ from helpers import generate_random_string
 @allure.story('Создание курьера')
 class TestCreateCourier:
 
-    @allure.title('Создание курьера - успех (позитивный сценарий)')
+    @allure.title('Создание курьера - успех (201, ok:true)')
     def test_create_courier_success(self):
         login = generate_random_string(10)
         password = generate_random_string(10)
@@ -32,11 +32,9 @@ class TestCreateCourier:
 
         payload = {"login": login, "password": password, "firstName": first_name}
 
-        # Первое создание - успех
         response1 = ApiClient.post(Urls.CREATE_COURIER, data=payload)
         assert response1.status_code == 201
 
-        # Второе создание с тем же логином - ошибка
         response2 = ApiClient.post(Urls.CREATE_COURIER, data=payload)
         assert response2.status_code == 409
         assert response2.json().get('message') == 'Этот логин уже используется'

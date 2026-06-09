@@ -29,8 +29,9 @@ class TestOrdersList:
         response = ApiClient.get(Urls.GET_ORDERS_LIST, params={'limit': 1})
 
         assert response.status_code == 200
-        if len(response.json()['orders']) > 0:
-            order = response.json()['orders'][0]
+        orders = response.json()['orders']
+        if len(orders) > 0:
+            order = orders[0]
             expected_fields = ['id', 'firstName', 'lastName', 'address', 'track', 'status']
             for field in expected_fields:
                 assert field in order
