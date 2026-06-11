@@ -27,20 +27,20 @@ class TestDeleteCourier:
         assert login_response.status_code == 200
         courier_id = login_response.json()['id']
 
-        delete_response = ApiClient.delete(Urls.delete_courier(courier_id))
+        delete_response = ApiClient.delete_courier(courier_id)
         assert delete_response.status_code == 200
         assert delete_response.json() == {"ok": True}
 
     @allure.title('Удаление несуществующего курьера - ошибка 404')
     def test_delete_nonexistent_courier_fails(self):
-        response = ApiClient.delete(Urls.delete_courier(999999999))
+        response = ApiClient.delete_courier(999999999)
         assert response.status_code == 404
         assert response.json().get('message') == 'Курьера с таким id нет'
 
-    @allure.title('Удаление курьера без ID - ошибка 400')
+    @allure.title('Удаление курьера без ID - ошибка 404')
     def test_delete_courier_without_id_fails(self):
         response = ApiClient.delete('/api/v1/courier/')
-        assert response.status_code == 400
+        assert response.status_code == 404
 
 
 @allure.feature('Заказы')
@@ -71,7 +71,7 @@ class TestAcceptOrder:
         assert track_response.status_code == 200
         order_id = track_response.json()['order']['id']
 
-        accept_response = ApiClient.put(Urls.accept_order(order_id), params={'courierId': courier_id})
+        accept_response = ApiClient.accept_order(order_id, courier_id)
         assert accept_response.status_code == 200
         assert accept_response.json() == {"ok": True}
 
@@ -89,7 +89,7 @@ class TestAcceptOrder:
         assert track_response.status_code == 200
         order_id = track_response.json()['order']['id']
 
-        accept_response = ApiClient.put(Urls.accept_order(order_id))
+        accept_response = ApiClient.put(Urls.ACCEPT_ORDER.format(order_id=order_id))
         assert accept_response.status_code == 400
         assert accept_response.json().get('message') == 'Недостаточно данных для поиска'
 
@@ -107,7 +107,7 @@ class TestAcceptOrder:
         assert track_response.status_code == 200
         order_id = track_response.json()['order']['id']
 
-        accept_response = ApiClient.put(Urls.accept_order(order_id), params={'courierId': 999999999})
+        accept_response = ApiClient.accept_order(order_id, 999999999)
         assert accept_response.status_code == 404
         assert accept_response.json().get('message') == 'Курьера с таким id не существует'
 
@@ -127,7 +127,7 @@ class TestAcceptOrder:
         assert login_response.status_code == 200
         courier_id = login_response.json()['id']
 
-        accept_response = ApiClient.put(Urls.accept_order(999999999), params={'courierId': courier_id})
+        accept_response = ApiClient.accept_order(999999999, courier_id)
         assert accept_response.status_code == 404
         assert accept_response.json().get('message') == 'Заказа с таким id не существует'
 

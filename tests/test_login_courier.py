@@ -1,63 +1,48 @@
-"""Тесты авторизации курьера"""
+"""Тесты создания курьера"""
 
 import allure
 import pytest
 from api_client import ApiClient
 from urls import Urls
-from data import INCOMPLETE_LOGIN_DATA
+from data import INCOMPLETE_COURIER_DATA
 from helpers import generate_random_string
 
 
 @allure.feature('Курьер')
-@allure.story('Авторизация курьера')
-class TestLoginCourier:
+@allure.story('Создание курьера')
+class TestCreateCourier:
 
-    @allure.title('Авторизация курьера - успех (200, id)')
-    def test_login_courier_success(self):
+    @allure.title('Создание курьера - успех (201, ok:true)')
+    def test_create_courier_success(self):
         login = generate_random_string(10)
         password = generate_random_string(10)
         first_name = "Тест"
 
-        create_payload = {"login": login, "password": password, "firstName": first_name}
-        create_response = ApiClient.post(Urls.CREATE_COURIER, data=create_payload)
-        assert create_response.status_code == 201
+        payload = {"login": login, "password": password, "firstName": first_name}
+        response = ApiClient.post(Urls.CREATE_COURIER, data=payload)
 
-        login_payload = {"login": login, "password": password}
-        response = ApiClient.post(Urls.LOGIN_COURIER, data=login_payload)
+        assert response.status_code == 201
+        assert response.json() == {"ok": True}
 
-        assert response.status_code == 200
-        assert 'id' in response.json()
-        assert response.json()['id'] > 0
+    @allure.title('Создание курьера с повторяющимся логином - ошибка 409')
+    def test_create_courier_duplicate_login_fails(self):
+        login = generate_random_string(10)
+        password = "test_pass_123"
+        first_name = "Тест"
 
-    @allure.title('Авторизация без обязательных полей - ошибка 400')
-    @pytest.mark.parametrize("payload, expected_message", INCOMPLETE_LOGIN_DATA)
-    def test_login_missing_fields_fails(self, payload, expected_message):
-        response = ApiClient.post(Urls.LOGIN_COURIER, data=payload)
+        payload = {"login": login, "password": password, "firstName": first_name}
+
+        response1 = ApiClient.post(Urls.CREATE_COURIER, data=payload)
+        assert response1.status_code == 201
+
+        response2 = ApiClient.post(Urls.CREATE_COURIER, data=payload)
+        assert response2.status_code == 409
+        assert response2.json().get('message') == 'Этот логин уже используется'
+
+    @allure.title('Создание курьера без обязательных полей - ошибка 400')
+    @pytest.mark.parametrize("payload, expected_message", INCOMPLETE_COURIER_DATA)
+    def test_create_courier_missing_field_fails(self, payload, expected_message):
+        response = ApiClient.post(Urls.CREATE_COURIER, data=payload)
 
         assert response.status_code == 400
         assert response.json().get('message') == expected_message
-
-    @allure.title('Авторизация с несуществующими данными - ошибка 404')
-    def test_login_nonexistent_user_fails(self):
-        payload = {"login": "ghost_user_999", "password": "ghost_pass_888"}
-        response = ApiClient.post(Urls.LOGIN_COURIER, data=payload)
-
-        assert response.status_code == 404
-        assert response.json().get('message') == 'Учетная запись не найдена'
-
-    @allure.title('Авторизация с неверным паролем - ошибка 404')
-    def test_login_wrong_password_fails(self):
-        login = generate_random_string(10)
-        password = generate_random_string(10)
-        first_name = "Тест"
-
-        create_payload = {"login": login, "password": password, "firstName": first_name}
-        create_response = ApiClient.post(Urls.CREATE_COURIER, data=create_payload)
-        assert create_response.status_code == 201
-
-        wrong_password = "wrong_password_123"
-        login_payload = {"login": login, "password": wrong_password}
-        response = ApiClient.post(Urls.LOGIN_COURIER, data=login_payload)
-
-        assert response.status_code == 404
-        assert response.json().get('message') == 'Учетная запись не найдена'

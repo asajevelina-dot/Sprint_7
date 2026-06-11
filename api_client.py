@@ -43,3 +43,12 @@ class ApiClient:
         allure.attach(str(response.status_code), name="Status Code", attachment_type=allure.attachment_type.TEXT)
         allure.attach(response.text, name="Response Body", attachment_type=allure.attachment_type.TEXT)
         return response
+
+    # Вспомогательные методы для работы с URL
+    @staticmethod
+    def delete_courier(courier_id):
+        return ApiClient.delete(Urls.DELETE_COURIER_TEMPLATE.format(courier_id=courier_id))
+
+    @staticmethod
+    def accept_order(order_id, courier_id):
+        return ApiClient.put(Urls.ACCEPT_ORDER.format(order_id=order_id), params={'courierId': courier_id})

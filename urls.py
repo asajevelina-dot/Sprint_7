@@ -15,13 +15,5 @@ class Urls:
     CREATE_ORDER = '/api/v1/orders'
     GET_ORDERS_LIST = '/api/v1/orders'
     GET_ORDER_BY_TRACK = '/api/v1/orders/track'
-    ACCEPT_ORDER_TEMPLATE = '/api/v1/orders/accept/{order_id}'
+    ACCEPT_ORDER = '/api/v1/orders/accept/{order_id}'
     CANCEL_ORDER = '/api/v1/orders/cancel'
-
-    @staticmethod
-    def delete_courier(courier_id):
-        return Urls.DELETE_COURIER_TEMPLATE.format(courier_id=courier_id)
-
-    @staticmethod
-    def accept_order(order_id):
-        return Urls.ACCEPT_ORDER_TEMPLATE.format(order_id=order_id)

@@ -30,9 +30,8 @@ class TestOrdersList:
 
         assert response.status_code == 200
         orders = response.json()['orders']
-        if len(orders) > 0:
-            order = orders[0]
-            expected_fields = ['id', 'firstName', 'lastName', 'address', 'track', 'status']
+        expected_fields = ['id', 'firstName', 'lastName', 'address', 'track', 'status']
+        for order in orders:
             for field in expected_fields:
                 assert field in order
 
